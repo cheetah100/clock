@@ -110,6 +110,7 @@ All keys in [config.json](config.json) (any key may be omitted; defaults shown):
 | `min_inner_outer_gap` | 4 | A cog's outer rim must have at least this many more teeth than its inner rim |
 | `tooth_module` | 1.0 | Tooth pitch constant; radius = teeth × module / 2 |
 | `max_cogs` | 12 | Cap on cogs per clock |
+| `max_meshes_per_cog` | 2 | Cog-to-cog connections a single cog may have (the spec's limit is 2; raising it allows richer gear graphs but more cycles, hence more rotational deadlocks — which are rejected as invalid) |
 | `population_size` | 100 | Clocks in the pool |
 | `mutation_rate` | 0.35 | Every child gets one mutation; this is the chance of each *additional* mutation (max 4 extras) |
 | `selection_method` | `"tournament"` | `"tournament"`, `"random"`, or `"best"` (see below) |
@@ -188,7 +189,7 @@ DNA invariants (tooth bounds, ≤3 hands, ≤2 meshes per cog).
 python3 -m unittest discover -s tests -v
 ```
 
-17 tests cover gear-ratio propagation, deadlock detection, stage
+19 tests cover gear-ratio propagation, deadlock detection, stage
 classification, fitness ordering and gradients, mutation invariants over
 thousands of random mutations, DNA serialization round-trips, an end-to-end
 smoke run, and the web app (run lifecycle, config validation, HTTP endpoints).

@@ -33,6 +33,7 @@ class Config:
     min_inner_outer_gap: int = 4   # outer_teeth must exceed inner_teeth by this
     tooth_module: float = 1.0      # radius = teeth * module / 2
     max_cogs: int = 12
+    max_meshes_per_cog: int = 2    # cog-to-cog connections a single cog may have
 
     # Evolution parameters
     population_size: int = 100
@@ -74,5 +75,7 @@ class Config:
             raise ValueError("Cog teeth bounds leave no room for inner/outer gap")
         if self.population_size < 2:
             raise ValueError("population_size must be at least 2")
+        if self.max_meshes_per_cog < 1:
+            raise ValueError("max_meshes_per_cog must be at least 1")
         if self.selection_method not in ("tournament", "random", "best"):
             raise ValueError("selection_method must be tournament, random or best")

@@ -6,6 +6,7 @@
   "min_inner_outer_gap": 4,
   "tooth_module": 1.0,
   "max_cogs": 12,
+  "max_meshes_per_cog": 4,
 
   "population_size": 100,
   "mutation_rate": 0.35,

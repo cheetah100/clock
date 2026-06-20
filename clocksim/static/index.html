@@ -154,7 +154,8 @@ const $ = id => document.getElementById(id);
 
 const GROUPS = [
   ["Component bounds", ["min_cog_teeth", "max_cog_teeth", "min_ratchet_teeth",
-                        "max_ratchet_teeth", "min_inner_outer_gap", "max_cogs"]],
+                        "max_ratchet_teeth", "min_inner_outer_gap", "max_cogs",
+                        "max_meshes_per_cog"]],
   ["Evolution", ["population_size", "mutation_rate", "selection_method", "tournament_size"]],
   ["Simulation", ["generations_per_run", "visualization_frequency", "ratio_tolerance",
                   "stop_on_success", "random_seed"]],
@@ -163,6 +164,7 @@ const LABELS = {
   min_cog_teeth: "Min cog teeth", max_cog_teeth: "Max cog teeth",
   min_ratchet_teeth: "Min ratchet teeth", max_ratchet_teeth: "Max ratchet teeth",
   min_inner_outer_gap: "Inner/outer gap", max_cogs: "Max cogs per clock",
+  max_meshes_per_cog: "Max meshes per cog",
   population_size: "Population size", mutation_rate: "Mutation rate",
   selection_method: "Selection method", tournament_size: "Tournament size",
   generations_per_run: "Generation limit", visualization_frequency: "Snapshot every N gen",

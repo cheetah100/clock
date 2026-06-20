@@ -35,7 +35,7 @@ RENDER_LOCK = threading.Lock()
 # server-side; edit the config file for that).
 FORM_FIELDS = [
     "min_cog_teeth", "max_cog_teeth", "min_ratchet_teeth", "max_ratchet_teeth",
-    "min_inner_outer_gap", "max_cogs",
+    "min_inner_outer_gap", "max_cogs", "max_meshes_per_cog",
     "population_size", "mutation_rate", "selection_method", "tournament_size",
     "generations_per_run", "visualization_frequency", "ratio_tolerance",
     "stop_on_success", "random_seed",

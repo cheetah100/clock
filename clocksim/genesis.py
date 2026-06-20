@@ -7,7 +7,6 @@ from typing import Optional
 from .config import Config
 from .dna import ClockDNA, Cog, Hand, Mesh, Pendulum, Ratchet, INNER, OUTER, SURFACES
 
-MAX_MESHES_PER_COG = 2   # per spec: up to two simultaneous cog-to-cog connections
 MAX_HANDS = 3
 
 # Steps used for tooth-count tweaks: mostly fine adjustments, occasionally bold.
@@ -48,7 +47,7 @@ def random_clock(rng: random.Random, config: Config) -> ClockDNA:
     for i, cog in enumerate(dna.cogs[1:], start=1):
         if rng.random() < 0.6:
             partner = rng.choice(dna.cogs[:i])
-            if dna.cog_mesh_count(partner.id) < MAX_MESHES_PER_COG:
+            if dna.cog_mesh_count(partner.id) < config.max_meshes_per_cog:
                 dna.meshes.append(
                     Mesh(
                         cog_a=partner.id,
@@ -112,7 +111,7 @@ def mut_add_cog(dna, rng, config):
     cog = random_cog(dna, rng, config)
     dna.cogs.append(cog)
     partners = [c for c in dna.cogs if c.id != cog.id
-                and dna.cog_mesh_count(c.id) < MAX_MESHES_PER_COG]
+                and dna.cog_mesh_count(c.id) < config.max_meshes_per_cog]
     if partners and rng.random() < 0.8:
         partner = rng.choice(partners)
         dna.meshes.append(
@@ -183,7 +182,7 @@ def mut_hand_length(dna, rng, config):
 
 
 def mut_add_mesh(dna, rng, config):
-    candidates = [c for c in dna.cogs if dna.cog_mesh_count(c.id) < MAX_MESHES_PER_COG]
+    candidates = [c for c in dna.cogs if dna.cog_mesh_count(c.id) < config.max_meshes_per_cog]
     if len(candidates) < 2:
         return False
     existing = dna.meshed_pairs()

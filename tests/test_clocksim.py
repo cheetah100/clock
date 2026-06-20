@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from clocksim.config import Config
 from clocksim.dna import ClockDNA, Cog, Hand, Mesh, Pendulum, Ratchet, INNER, OUTER
-from clocksim.fitness import score
-from clocksim.genesis import (MAX_HANDS, MAX_MESHES_PER_COG, mutate, random_clock)
+from clocksim.fitness import score, VALID_BASE
+from clocksim.genesis import (MAX_HANDS, mutate, random_clock)
 from clocksim.mechanics import evaluate
 
 
@@ -127,6 +127,37 @@ class TestMechanics(unittest.TestCase):
         self.assertIn("deadlock", ev.reason)
         self.assertEqual(ev.stage, 0)
 
+    def test_directional_lock_is_invalid(self):
+        # Three identical cogs meshed outer-outer in a triangle: every gear
+        # ratio is 1, so the only conflict is direction. Going round the odd
+        # cycle flips the sign three times, demanding a cog turn both ways at
+        # once - a rotational lock that must be rejected even though the
+        # speeds match. (Such topologies become reachable once a cog may hold
+        # more than two meshes.)
+        dna = ClockDNA(
+            ratchet=Ratchet(teeth=30),
+            pendulum=Pendulum(length=1.0),
+            spring_to_ratchet=True,
+            pendulum_to_ratchet=True,
+            drive_cog="a",
+            drive_surface=OUTER,
+        )
+        dna.cogs = [
+            Cog("a", outer_teeth=40, inner_teeth=8),
+            Cog("b", outer_teeth=40, inner_teeth=8),
+            Cog("c", outer_teeth=40, inner_teeth=8),
+        ]
+        dna.meshes = [
+            Mesh("a", OUTER, "b", OUTER),
+            Mesh("b", OUTER, "c", OUTER),
+            Mesh("c", OUTER, "a", OUTER),
+        ]
+        ev = evaluate(dna, self.config)
+        self.assertFalse(ev.valid)
+        self.assertIn("deadlock", ev.reason)
+        self.assertEqual(ev.stage, 0)
+        self.assertLess(score(dna, ev, self.config), VALID_BASE)
+
 
 class TestFitness(unittest.TestCase):
     def setUp(self):
@@ -187,7 +218,7 @@ class TestGenesis(unittest.TestCase):
             self.assertLessEqual(
                 cog.inner_teeth + self.config.min_inner_outer_gap, cog.outer_teeth
             )
-            self.assertLessEqual(dna.cog_mesh_count(cog.id), MAX_MESHES_PER_COG)
+            self.assertLessEqual(dna.cog_mesh_count(cog.id), self.config.max_meshes_per_cog)
         for hand in dna.hands:
             self.assertIn(hand.cog_id, cog_ids)
         for mesh in dna.meshes:
@@ -208,6 +239,20 @@ class TestGenesis(unittest.TestCase):
         for _ in range(2000):
             dna = mutate(dna, self.rng, self.config)
             self.check_invariants(dna)
+
+    def test_max_meshes_per_cog_is_configurable(self):
+        # A raised limit must be honoured by every mesh-adding operator, and a
+        # cog must actually be allowed to exceed the spec's default of 2.
+        config = Config(max_meshes_per_cog=4)
+        dna = random_clock(self.rng, config)
+        seen_above_two = False
+        for _ in range(3000):
+            dna = mutate(dna, self.rng, config)
+            for cog in dna.cogs:
+                count = dna.cog_mesh_count(cog.id)
+                self.assertLessEqual(count, config.max_meshes_per_cog)
+                seen_above_two = seen_above_two or count > 2
+        self.assertTrue(seen_above_two, "raised limit never produced a 3rd mesh")
 
     def test_serialization_roundtrip(self):
         dna = perfect_clock()
