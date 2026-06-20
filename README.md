@@ -4,7 +4,8 @@ A genetic algorithm that evolves working mechanical clocks from random component
 specifications, implementing [docs/clock_evolution_simulator_spec.md](docs/clock_evolution_simulator_spec.md).
 Starting from a population of randomly wired clocks, it evolves an escapement
 (spring + ratchet + pendulum), then a gear train, then three hands turning at the
-correct 3600 : 60 : 1 (seconds : minutes : hours) ratios.
+correct 720 : 12 : 1 (seconds : minutes : hours) ratios — the hour hand turns
+once every 12 hours.
 
 With the default configuration a correct three-handed clock typically evolves in
 **3,000–20,000 generations (a few seconds of wall time)**.
@@ -118,7 +119,7 @@ All keys in [config.json](config.json) (any key may be omitted; defaults shown):
 | `mutation_weights` | see `clocksim/config.py` | Relative probability of each mutation operator |
 | `generations_per_run` | 200000 | Generation limit |
 | `visualization_frequency` | 100 | Record a population snapshot every N generations |
-| `ratio_tolerance` | 0.01 | Relative error allowed on each 60:1 ratio for stage 4 |
+| `ratio_tolerance` | 0.01 | Relative error allowed on each hand-pair ratio (60 for seconds:minutes, 12 for minutes:hours) for stage 4 |
 | `stop_on_success` | true | Stop as soon as a stage-4 clock exists |
 | `random_seed` | null | Fix for reproducible runs |
 
@@ -142,7 +143,7 @@ by a mutated copy of the winner):
   together. The ratchet's output meshes with one cog surface; rotation then
   propagates through the mesh graph. Every mesh reverses direction and scales
   speed by the ratio of the engaged radii, so a cog's small inner rim driving a
-  large outer rim is how the train slows down 60:1 over a couple of stages.
+  large outer rim is how the train slows down (60:1, then 12:1) over a couple of stages.
 - **Hands** turn with whatever cog surface they're attached to. Roles are
   assigned by speed: the fastest rotating hand is Seconds, then Minutes, then Hours.
 
@@ -164,11 +165,12 @@ by a mutated copy of the winner):
 Hierarchical stages dominate: `score = 100 + 2000 × stage + bonus`, with the
 bonus capped below 2000 so a higher stage always wins. Stages: 0 non-functional,
 1 swinging pendulum, 2 one rotating hand, 3 two+, 4 all three hands within
-`ratio_tolerance` of 60:1. Invalid clocks score below every valid clock (0–30,
+`ratio_tolerance` of their targets (60 then 12). Invalid clocks score below every valid clock (0–30,
 with small credit per escapement connection so they can climb back out).
 
 The within-stage bonus rewards powered cogs, hands present, a wired ratchet
-output, each *rotating* hand, and per-pair ratio accuracy `exp(-|ln(ratio/60)|)`.
+output, each *rotating* hand, and per-pair ratio accuracy `exp(-|ln(ratio/target)|)`
+(target 60 for seconds:minutes, 12 for minutes:hours).
 Accuracy is **summed per pair rather than averaged** — this matters: with an
 average, a perfect two-handed clock is a local optimum that a third hand can
 only make worse, and evolution stalls there permanently (observed empirically

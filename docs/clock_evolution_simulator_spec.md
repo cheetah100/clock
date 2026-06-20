@@ -84,8 +84,8 @@ Within each stage, clocks are scored by how close their hand rotation ratios are
 
 - **Target ratios**: 
   - Seconds : Minutes = 60 : 1 (for every 60 revolutions of seconds hand, minutes hand revolves once)
-  - Minutes : Hours = 60 : 1 (for every 60 revolutions of minutes hand, hours hand revolves once)
-  - Overall: Seconds : Minutes : Hours = 3600 : 60 : 1
+  - Minutes : Hours = 12 : 1 (for every 12 revolutions of minutes hand, hours hand revolves once — the hour hand completes one turn every 12 hours)
+  - Overall: Seconds : Minutes : Hours = 720 : 12 : 1
 - **Ratio accuracy**: Measure the error between actual and target ratios for each hand pair
 - **Composite score**: Stage bonus (higher stages score higher) + accuracy bonus (closeness to target ratios)
 
@@ -139,7 +139,7 @@ visualization_frequency: 100  # Log data every N generations
 
 ### Primary Metrics (Graphed Over Time)
 1. **Hand Count Evolution**: Number of clocks at each stage (0-handed, 1-handed, 2-handed, 3-handed) plotted as a time series or stacked area chart
-2. **Accuracy Over Time**: Average accuracy (error from target 60:1 ratios) for clocks with 2+ hands, plotted over generations
+2. **Accuracy Over Time**: Average accuracy (error from the target hand-pair ratios, 60 then 12) for clocks with 2+ hands, plotted over generations
 
 ### Data Tracked Per Generation
 - **Best clock in population**: Its fitness score and stage

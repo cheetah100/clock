@@ -35,7 +35,10 @@ from .dna import ClockDNA, INNER, OUTER
 
 G = 9.80665
 TWO_PI = 2.0 * math.pi
-TARGET_RATIO = 60.0
+# Target ratio between successive hands, fastest first: the seconds hand turns
+# 60x the minutes hand, the minutes hand 12x the hours hand (the hour hand
+# completes one revolution every 12 hours). Overall seconds:minutes:hours = 720:12:1.
+TARGET_RATIOS = (60.0, 12.0)
 
 
 def pendulum_frequency(length: float) -> float:
@@ -203,11 +206,13 @@ def _stage_and_accuracy(dna: ClockDNA, config: Config, ev: Evaluation) -> None:
     else:
         ev.stage = 3
         ev.ratios = [speeds[i][1] / speeds[i + 1][1] for i in range(count - 1)]
-        ev.pair_errors = [abs(math.log(r / TARGET_RATIO)) for r in ev.ratios]
+        ev.pair_errors = [
+            abs(math.log(r / TARGET_RATIOS[i])) for i, r in enumerate(ev.ratios)
+        ]
         ev.accuracy = math.exp(-sum(ev.pair_errors) / len(ev.pair_errors))
         if count == 3 and all(
-            abs(r - TARGET_RATIO) / TARGET_RATIO <= config.ratio_tolerance
-            for r in ev.ratios
+            abs(r - TARGET_RATIOS[i]) / TARGET_RATIOS[i] <= config.ratio_tolerance
+            for i, r in enumerate(ev.ratios)
         ):
             ev.stage = 4
 

@@ -30,6 +30,7 @@ CLOCK_DIR = os.path.join(EXPERIMENTS_DIR, "clocks")
 SWEEP_ORDERS = {
     "max_cog_teeth": [16, 24, 40, 60, 120],
     "max_cogs": [5, 6, 8, 12, 16],
+    "max_meshes_per_cog": [2, 3, 4, 6, 8],
     "population_size": [10, 25, 50, 100, 250],
     "mutation_rate": [0.0, 0.2, 0.35, 0.6, 0.9],
     "selection": ["random", "best", "tournament-2", "tournament-4",
@@ -38,6 +39,7 @@ SWEEP_ORDERS = {
 SWEEP_TITLES = {
     "max_cog_teeth": "Maximum cog teeth",
     "max_cogs": "Maximum cogs per clock",
+    "max_meshes_per_cog": "Maximum meshes per cog",
     "population_size": "Population size",
     "mutation_rate": "Mutation rate (extra-mutation probability)",
     "selection": "Selection method",

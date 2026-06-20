@@ -47,7 +47,7 @@ class Config:
     # Simulation parameters
     generations_per_run: int = 200000
     visualization_frequency: int = 100  # snapshot population stats every N generations
-    ratio_tolerance: float = 0.01       # relative error allowed on the 60:1 ratios
+    ratio_tolerance: float = 0.01       # relative error allowed on each hand-pair ratio (60, then 12)
     stop_on_success: bool = True
     random_seed: Optional[int] = None
 

@@ -18,13 +18,13 @@ from clocksim.mechanics import evaluate
 
 
 def perfect_clock():
-    """A hand-built stage-4 clock: 60:1 between successive hands.
+    """A hand-built stage-4 clock: 60:1 seconds->minutes, 12:1 minutes->hours.
 
     ratchet -> C1.outer; seconds hand on C1
     C1.inner(8)  -> C2.outer(120)  (1/15)
     C2.inner(30) -> C3.outer(120)  (1/4)   => minutes on C3 at 1/60
-    C3.inner(12) -> C4.outer(120)  (1/10)
-    C4.inner(20) -> C5.outer(120)  (1/6)   => hours on C5 at 1/3600
+    C3.inner(10) -> C4.outer(120)  (1/12)
+    C4.inner(20) -> C5.outer(20)   (1/1)   => hours on C5 at 1/720
     """
     dna = ClockDNA(
         ratchet=Ratchet(teeth=30),
@@ -38,9 +38,9 @@ def perfect_clock():
     dna.cogs = [
         Cog("c1", outer_teeth=60, inner_teeth=8),
         Cog("c2", outer_teeth=120, inner_teeth=30),
-        Cog("c3", outer_teeth=120, inner_teeth=12),
+        Cog("c3", outer_teeth=120, inner_teeth=10),
         Cog("c4", outer_teeth=120, inner_teeth=20),
-        Cog("c5", outer_teeth=120, inner_teeth=8),
+        Cog("c5", outer_teeth=20, inner_teeth=8),
     ]
     dna.meshes = [
         Mesh("c1", INNER, "c2", OUTER),
@@ -65,14 +65,14 @@ class TestMechanics(unittest.TestCase):
         self.assertTrue(ev.valid, ev.reason)
         self.assertEqual(ev.stage, 4)
         self.assertEqual(len(ev.ratios), 2)
-        for ratio in ev.ratios:
-            self.assertAlmostEqual(ratio, 60.0, places=6)
+        self.assertAlmostEqual(ev.ratios[0], 60.0, places=6)   # seconds : minutes
+        self.assertAlmostEqual(ev.ratios[1], 12.0, places=6)   # minutes : hours
 
     def test_gear_ratio_propagation(self):
         ev = evaluate(perfect_clock(), self.config)
         w1, w3, w5 = ev.omegas["c1"], ev.omegas["c3"], ev.omegas["c5"]
-        self.assertAlmostEqual(abs(w1) / abs(w3), 60.0, places=6)
-        self.assertAlmostEqual(abs(w1) / abs(w5), 3600.0, places=4)
+        self.assertAlmostEqual(abs(w1) / abs(w3), 60.0, places=6)    # seconds : minutes
+        self.assertAlmostEqual(abs(w1) / abs(w5), 720.0, places=4)   # seconds : hours
 
     def test_mesh_reverses_direction(self):
         ev = evaluate(perfect_clock(), self.config)

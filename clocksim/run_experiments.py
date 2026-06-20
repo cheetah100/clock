@@ -17,6 +17,7 @@ import time
 
 from clocksim.config import Config
 from clocksim.evolution import EvolutionEngine
+from clocksim.mechanics import TARGET_RATIOS
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(_ROOT, "experiments", "data")
@@ -26,6 +27,7 @@ SEEDS = list(range(8))
 BASELINE = {
     "max_cog_teeth": 120,
     "max_cogs": 12,
+    "max_meshes_per_cog": 2,
     "population_size": 100,
     "mutation_rate": 0.35,
     "selection_method": "tournament",
@@ -40,6 +42,7 @@ BASELINE = {
 SWEEPS = {
     "max_cog_teeth": [(v, {"max_cog_teeth": v}) for v in (16, 24, 40, 60)],
     "max_cogs": [(v, {"max_cogs": v}) for v in (5, 6, 8, 16)],
+    "max_meshes_per_cog": [(v, {"max_meshes_per_cog": v}) for v in (3, 4, 6, 8)],
     "population_size": [(v, {"population_size": v}) for v in (10, 25, 50, 250)],
     "mutation_rate": [(v, {"mutation_rate": v}) for v in (0.0, 0.2, 0.6, 0.9)],
     "selection": [
@@ -55,6 +58,7 @@ SWEEPS = {
 BASELINE_LABELS = {
     "max_cog_teeth": 120,
     "max_cogs": 12,
+    "max_meshes_per_cog": 2,
     "population_size": 100,
     "mutation_rate": 0.35,
     "selection": "tournament-4",
@@ -86,7 +90,8 @@ def run_task(task):
             first_stage_gen.setdefault(stage, entry["generation"])
 
     ratios = list(engine.best_eval.ratios)
-    error_pct = [abs(r - 60.0) / 60.0 * 100.0 for r in ratios]
+    error_pct = [abs(r - TARGET_RATIOS[i]) / TARGET_RATIOS[i] * 100.0
+                 for i, r in enumerate(ratios)]
     return {
         "sweep": sweep,
         "value": label,

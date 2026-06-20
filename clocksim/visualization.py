@@ -210,7 +210,7 @@ def clock_figure(dna: ClockDNA, config: Config, compact: bool = False) -> "plt.F
         ratio_text = ", ".join("%.2f" % r for r in ev.ratios) or "n/a"
         status = "VALID" if ev.valid else "INVALID (%s)" % ev.reason
         ax.set_title(
-            "Clock schematic - stage %d, %s\nhand speed ratios (target 60): %s"
+            "Clock schematic - stage %d, %s\nhand speed ratios (target 60, 12): %s"
             % (ev.stage, status, ratio_text)
         )
     ax.set_aspect("equal")

@@ -6,8 +6,8 @@ Score bands (higher stage always beats lower stage):
 
 The bonuses create a gradient *within* a stage so single mutations can make
 measurable progress: growing the powered gear train, adding hands, wiring
-the ratchet output, getting more hands rotating, and approaching the 60:1
-target ratios. Per-pair accuracy is *summed* (not averaged) so attaching a
+the ratchet output, getting more hands rotating, and approaching the target
+hand-pair ratios (60 then 12). Per-pair accuracy is *summed* (not averaged) so attaching a
 third hand never reduces the accuracy bonus already earned by the first
 pair - otherwise two perfect hands become an inescapable local optimum.
 """
@@ -39,5 +39,5 @@ def score(dna: ClockDNA, ev: Evaluation, config: Config) -> float:
     if dna.drive_cog is not None:
         value += 50.0
     value += 200.0 * ev.rotating_hand_count()         # hands actually turning
-    value += 300.0 * sum(math.exp(-e) for e in ev.pair_errors)  # closeness to 60:1
+    value += 300.0 * sum(math.exp(-e) for e in ev.pair_errors)  # closeness to target ratios
     return value
