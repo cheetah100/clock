@@ -1,0 +1,20 @@
+{
+  "min_cog_teeth": 8,
+  "max_cog_teeth": 40,
+  "min_ratchet_teeth": 8,
+  "max_ratchet_teeth": 60,
+  "min_inner_outer_gap": 4,
+  "tooth_module": 1.0,
+  "max_cogs": 12,
+
+  "population_size": 100,
+  "mutation_rate": 0.35,
+  "selection_method": "tournament",
+  "tournament_size": 4,
+
+  "generations_per_run": 200000,
+  "visualization_frequency": 100,
+  "ratio_tolerance": 0.01,
+  "stop_on_success": true,
+  "random_seed": null
+}

@@ -1,0 +1,166 @@
+{
+ "ratchet": {
+  "teeth": 49
+ },
+ "pendulum": {
+  "length": 2.090237190696124
+ },
+ "cogs": [
+  {
+   "id": "c1",
+   "outer_teeth": 76,
+   "inner_teeth": 14
+  },
+  {
+   "id": "c2",
+   "outer_teeth": 95,
+   "inner_teeth": 8
+  },
+  {
+   "id": "c7",
+   "outer_teeth": 96,
+   "inner_teeth": 60
+  },
+  {
+   "id": "c8",
+   "outer_teeth": 101,
+   "inner_teeth": 80
+  },
+  {
+   "id": "c9",
+   "outer_teeth": 110,
+   "inner_teeth": 34
+  },
+  {
+   "id": "c10",
+   "outer_teeth": 83,
+   "inner_teeth": 30
+  },
+  {
+   "id": "c11",
+   "outer_teeth": 31,
+   "inner_teeth": 14
+  },
+  {
+   "id": "c12",
+   "outer_teeth": 119,
+   "inner_teeth": 115
+  },
+  {
+   "id": "c13",
+   "outer_teeth": 57,
+   "inner_teeth": 9
+  },
+  {
+   "id": "c14",
+   "outer_teeth": 37,
+   "inner_teeth": 10
+  },
+  {
+   "id": "c20",
+   "outer_teeth": 44,
+   "inner_teeth": 20
+  },
+  {
+   "id": "c22",
+   "outer_teeth": 100,
+   "inner_teeth": 32
+  }
+ ],
+ "hands": [
+  {
+   "id": "h3",
+   "length": 33.57820587858944,
+   "cog_id": "c14",
+   "surface": "outer",
+   "attachment_radius": 11.925155449878794
+  },
+  {
+   "id": "h5",
+   "length": 7.382932008570279,
+   "cog_id": "c2",
+   "surface": "inner",
+   "attachment_radius": 6.1919999122294165
+  },
+  {
+   "id": "h6",
+   "length": 65.69772197650707,
+   "cog_id": "c1",
+   "surface": "outer",
+   "attachment_radius": 20.543679016549316
+  }
+ ],
+ "meshes": [
+  {
+   "cog_a": "c8",
+   "surface_a": "outer",
+   "cog_b": "c2",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c8",
+   "surface_a": "inner",
+   "cog_b": "c9",
+   "surface_b": "outer"
+  },
+  {
+   "cog_a": "c7",
+   "surface_a": "inner",
+   "cog_b": "c10",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c9",
+   "surface_a": "inner",
+   "cog_b": "c11",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c11",
+   "surface_a": "inner",
+   "cog_b": "c7",
+   "surface_b": "outer"
+  },
+  {
+   "cog_a": "c10",
+   "surface_a": "inner",
+   "cog_b": "c12",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c13",
+   "surface_a": "outer",
+   "cog_b": "c14",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c12",
+   "surface_a": "outer",
+   "cog_b": "c1",
+   "surface_b": "outer"
+  },
+  {
+   "cog_a": "c2",
+   "surface_a": "outer",
+   "cog_b": "c13",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c22",
+   "surface_a": "outer",
+   "cog_b": "c20",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c22",
+   "surface_a": "outer",
+   "cog_b": "c1",
+   "surface_b": "inner"
+  }
+ ],
+ "spring_to_ratchet": true,
+ "pendulum_to_ratchet": true,
+ "drive_cog": "c2",
+ "drive_surface": "inner",
+ "next_id": 23
+}
