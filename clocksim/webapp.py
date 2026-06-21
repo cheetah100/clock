@@ -8,7 +8,7 @@ Endpoints:
     POST /api/run               start a run (body: JSON config overrides)
     POST /api/stop              cancel the running simulation
     GET  /api/status            live progress + improvement timeline
-    GET  /api/plot/<name>.png   hands | accuracy | fitness chart
+    GET  /api/plot/<name>.png   hands | accuracy | fitness | mass chart
     GET  /api/clock/<i>.png     schematic of improvement i (?size=full for large)
     GET  /api/clock/<i>.json    DNA of improvement i
     GET  /api/history.json      full run history (downloadable)
@@ -38,7 +38,7 @@ FORM_FIELDS = [
     "min_inner_outer_gap", "max_cogs", "max_meshes_per_cog",
     "population_size", "mutation_rate", "selection_method", "tournament_size",
     "generations_per_run", "visualization_frequency", "ratio_tolerance",
-    "stop_on_success", "random_seed",
+    "material_weight", "stop_on_success", "random_seed",
 ]
 
 
@@ -107,6 +107,7 @@ class AppState:
                 "score": entry["score"],
                 "stage": entry["stage"],
                 "rotating_hands": entry["rotating_hands"],
+                "accurate": entry["accurate"],
                 "ratios": entry["ratios"],
             }
             for i, entry in enumerate(engine.improvements)

@@ -31,6 +31,7 @@ SWEEP_ORDERS = {
     "max_cog_teeth": [16, 24, 40, 60, 120],
     "max_cogs": [5, 6, 8, 12, 16],
     "max_meshes_per_cog": [2, 3, 4, 6, 8],
+    "material_weight": [0, 50, 100, 200, 400],
     "population_size": [10, 25, 50, 100, 250],
     "mutation_rate": [0.0, 0.2, 0.35, 0.6, 0.9],
     "selection": ["random", "best", "tournament-2", "tournament-4",
@@ -40,6 +41,7 @@ SWEEP_TITLES = {
     "max_cog_teeth": "Maximum cog teeth",
     "max_cogs": "Maximum cogs per clock",
     "max_meshes_per_cog": "Maximum meshes per cog",
+    "material_weight": "Material weight (parsimony pressure)",
     "population_size": "Population size",
     "mutation_rate": "Mutation rate (extra-mutation probability)",
     "selection": "Selection method",
@@ -67,21 +69,23 @@ def rows_for(sweep, rows):
 
 def aggregate(group):
     succ = [r for r in group if r["success"]]
-    gens = sorted(r["gen_stage4"] for r in succ)
+    gens = sorted(r["gen_success"] for r in succ)
     errs = sorted(r["final_error_pct"] for r in group
                   if r["final_error_pct"] is not None)
     return {
         "runs": len(group),
         "successes": len(succ),
         "success_rate": len(succ) / len(group),
-        "median_gen_stage4": statistics.median(gens) if gens else None,
-        "min_gen_stage4": gens[0] if gens else None,
-        "max_gen_stage4": gens[-1] if gens else None,
+        "median_gen_success": statistics.median(gens) if gens else None,
+        "min_gen_success": gens[0] if gens else None,
+        "max_gen_success": gens[-1] if gens else None,
         "median_final_error_pct": statistics.median(errs) if errs else None,
         "mean_elapsed_s": round(statistics.mean(r["elapsed_seconds"] for r in group), 1),
         "mean_best_cogs": round(statistics.mean(r["best_cogs"] for r in group), 1),
         "mean_powered_cogs": round(
             statistics.mean(r["best_powered_cogs"] for r in group), 1),
+        "mean_total_mass": round(
+            statistics.mean(r.get("best_total_mass", 0) for r in group)),
     }
 
 
@@ -92,7 +96,7 @@ def plot_sweep(sweep, groups, order, path):
 
     for x, value in zip(xs, order):
         group = groups.get(value, [])
-        succ = [r["gen_stage4"] for r in group if r["success"]]
+        succ = [r["gen_success"] for r in group if r["success"]]
         fail_count = sum(1 for r in group if not r["success"])
         jitter = [x + (i - len(succ) / 2) * 0.04 for i in range(len(succ))]
         ax1.scatter(jitter, succ, s=22, color="#2c6fad", alpha=0.75, zorder=3)
@@ -120,7 +124,7 @@ def plot_sweep(sweep, groups, order, path):
         ax.set_xlabel(SWEEP_TITLES[sweep])
         ax.grid(axis="y", lw=0.3, alpha=0.5)
     ax1.set_yscale("log")
-    ax1.set_ylabel("Generations to stage 4 (log)")
+    ax1.set_ylabel("Generations to working clock (log)")
     ax1.set_title("Time to evolve (x = failed within %d)" % BUDGET)
     ax2.set_yscale("log")
     ax2.set_ylabel("Final mean ratio error % (log)")
@@ -133,7 +137,7 @@ def plot_sweep(sweep, groups, order, path):
 
 def median_seed_row(group):
     """Pick a representative run: median time-to-success, else best score."""
-    succ = sorted((r for r in group if r["success"]), key=lambda r: r["gen_stage4"])
+    succ = sorted((r for r in group if r["success"]), key=lambda r: r["gen_success"])
     if succ:
         return succ[len(succ) // 2]
     return max(group, key=lambda r: r["final_score"])
@@ -160,9 +164,9 @@ def main():
     print("Loaded %d runs" % len(rows))
 
     summary = {}
-    csv_lines = ["sweep,value,runs,successes,success_rate,median_gen_stage4,"
-                 "min_gen_stage4,max_gen_stage4,median_final_error_pct,"
-                 "mean_elapsed_s,mean_best_cogs,mean_powered_cogs"]
+    csv_lines = ["sweep,value,runs,successes,success_rate,median_gen_success,"
+                 "min_gen_success,max_gen_success,median_final_error_pct,"
+                 "mean_elapsed_s,mean_best_cogs,mean_powered_cogs,mean_total_mass"]
     examples = {}
 
     overrides_by_sweep_value = {
@@ -181,14 +185,14 @@ def main():
             agg = aggregate(group)
             summary[sweep][str(value)] = agg
             csv_lines.append(
-                "%s,%s,%d,%d,%.3f,%s,%s,%s,%s,%.1f,%.1f,%.1f" % (
+                "%s,%s,%d,%d,%.3f,%s,%s,%s,%s,%.1f,%.1f,%.1f,%d" % (
                     sweep, value, agg["runs"], agg["successes"], agg["success_rate"],
-                    agg["median_gen_stage4"], agg["min_gen_stage4"],
-                    agg["max_gen_stage4"],
+                    agg["median_gen_success"], agg["min_gen_success"],
+                    agg["max_gen_success"],
                     ("%.4f" % agg["median_final_error_pct"])
                     if agg["median_final_error_pct"] is not None else "",
                     agg["mean_elapsed_s"], agg["mean_best_cogs"],
-                    agg["mean_powered_cogs"],
+                    agg["mean_powered_cogs"], agg["mean_total_mass"],
                 )
             )
         plot_sweep(sweep, groups, order, os.path.join(FIG_DIR, sweep + ".png"))

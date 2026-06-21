@@ -1,0 +1,89 @@
+{
+ "ratchet": {
+  "teeth": 31
+ },
+ "pendulum": {
+  "length": 1.5436324615980395
+ },
+ "cogs": [
+  {
+   "id": "c1",
+   "outer_teeth": 120,
+   "inner_teeth": 38
+  },
+  {
+   "id": "c2",
+   "outer_teeth": 55,
+   "inner_teeth": 11
+  },
+  {
+   "id": "c3",
+   "outer_teeth": 12,
+   "inner_teeth": 8
+  },
+  {
+   "id": "c4",
+   "outer_teeth": 91,
+   "inner_teeth": 53
+  },
+  {
+   "id": "c8",
+   "outer_teeth": 32,
+   "inner_teeth": 8
+  }
+ ],
+ "hands": [
+  {
+   "id": "h5",
+   "length": 5.467504063587645,
+   "cog_id": "c4",
+   "surface": "outer",
+   "attachment_radius": 11.659655935570624
+  },
+  {
+   "id": "h6",
+   "length": 28.20929757652961,
+   "cog_id": "c1",
+   "surface": "outer",
+   "attachment_radius": 30.77538733033059
+  },
+  {
+   "id": "h7",
+   "length": 32.07592342872043,
+   "cog_id": "c3",
+   "surface": "outer",
+   "attachment_radius": 4.686135323627372
+  }
+ ],
+ "meshes": [
+  {
+   "cog_a": "c1",
+   "surface_a": "inner",
+   "cog_b": "c2",
+   "surface_b": "outer"
+  },
+  {
+   "cog_a": "c4",
+   "surface_a": "outer",
+   "cog_b": "c2",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c1",
+   "surface_a": "outer",
+   "cog_b": "c8",
+   "surface_b": "inner"
+  },
+  {
+   "cog_a": "c8",
+   "surface_a": "outer",
+   "cog_b": "c3",
+   "surface_b": "inner"
+  }
+ ],
+ "spring_to_ratchet": true,
+ "pendulum_to_ratchet": true,
+ "drive_cog": "c8",
+ "drive_surface": "outer",
+ "next_id": 9
+}

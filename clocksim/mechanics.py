@@ -59,8 +59,10 @@ class Evaluation:
         self.depths = {}              # cog_id -> axial depth level
         self.hand_speeds = []         # [(hand_id, abs rev/sec)] fastest first
         self.ratios = []              # actual ratios between adjacent hands
-        self.pair_errors = []         # |ln(ratio / 60)| per adjacent pair
-        self.accuracy = 0.0           # exp(-mean pair error), 0..1
+        self.pair_errors = []         # |ln(ratio / target)| per adjacent pair
+        self.pair_closeness = []      # 1/(1+error) per adjacent pair, continuous 0..1
+        self.accuracy = 0.0           # mean pair closeness, 0..1
+        self.accurate = False         # all pairs within ratio_tolerance (the "working clock" label)
         self.score = 0.0              # filled in by fitness module
 
     def rotating_hand_count(self) -> int:
@@ -75,6 +77,7 @@ class Evaluation:
             "rotating_hands": self.rotating_hand_count(),
             "ratios": self.ratios,
             "accuracy": self.accuracy,
+            "accurate": self.accurate,
         }
 
 
@@ -198,23 +201,22 @@ def _stage_and_accuracy(dna: ClockDNA, config: Config, ev: Evaluation) -> None:
     if not ev.escapement:
         ev.stage = 0
         return
+    # Stage is purely structural capability: escapement (1) plus one per rotating
+    # hand, so three turning hands is stage 4 regardless of accuracy. How close the
+    # ratios are is a *continuous* reward (pair_closeness), never a stage threshold.
     count = len(speeds)
-    if count == 0:
-        ev.stage = 1
-    elif count == 1:
-        ev.stage = 2
-    else:
-        ev.stage = 3
+    ev.stage = 1 + count
+    if count >= 2:
         ev.ratios = [speeds[i][1] / speeds[i + 1][1] for i in range(count - 1)]
         ev.pair_errors = [
             abs(math.log(r / TARGET_RATIOS[i])) for i, r in enumerate(ev.ratios)
         ]
-        ev.accuracy = math.exp(-sum(ev.pair_errors) / len(ev.pair_errors))
-        if count == 3 and all(
+        ev.pair_closeness = [1.0 / (1.0 + e) for e in ev.pair_errors]
+        ev.accuracy = sum(ev.pair_closeness) / len(ev.pair_closeness)
+        ev.accurate = count == 3 and all(
             abs(r - TARGET_RATIOS[i]) / TARGET_RATIOS[i] <= config.ratio_tolerance
             for i, r in enumerate(ev.ratios)
-        ):
-            ev.stage = 4
+        )
 
 
 def evaluate(dna: ClockDNA, config: Config) -> Evaluation:

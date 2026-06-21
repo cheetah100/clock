@@ -20,7 +20,7 @@ from .mechanics import evaluate
 HAND_ROLES = ["Seconds", "Minutes", "Hours"]
 STAGE_LABELS = ["0 hands", "1 hand", "2 hands", "3 hands"]
 HAND_COLORS = ["#bbbbbb", "#7fb2e5", "#4d8fd1", "#1f5fa8"]
-CHART_NAMES = ("hands", "accuracy", "fitness")
+CHART_NAMES = ("hands", "accuracy", "fitness", "mass")
 
 
 def figure_png_bytes(fig, dpi=120) -> bytes:
@@ -59,6 +59,13 @@ def history_figure(name: str, history) -> "plt.Figure":
         ax.set_ylabel("Fitness score")
         ax.set_title("Fitness over time")
         ax.legend(fontsize=8)
+    elif name == "mass":
+        ax.plot(generations, [s.get("mean_mass") for s in snapshots], label="Mean mass")
+        ax.plot(generations, [s.get("best_mass") for s in snapshots],
+                label="Best clock", color="#c0392b")
+        ax.set_ylabel("Clock mass (sum of outer_teeth²)")
+        ax.set_title("Material use over time")
+        ax.legend(fontsize=8)
     else:
         raise ValueError("Unknown chart: %r" % name)
 
@@ -73,6 +80,7 @@ def plot_history(history, out_dir):
         "hands": "hands_over_time.png",
         "accuracy": "accuracy_over_time.png",
         "fitness": "fitness_over_time.png",
+        "mass": "mass_over_time.png",
     }
     for name, file_name in file_names.items():
         fig = history_figure(name, history)

@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from clocksim.config import Config
 from clocksim.dna import ClockDNA, Cog, Hand, Mesh, Pendulum, Ratchet, INNER, OUTER
-from clocksim.fitness import score, VALID_BASE
+from clocksim.fitness import score, VALID_BASE, STAGE_WEIGHT
 from clocksim.genesis import (MAX_HANDS, mutate, random_clock)
 from clocksim.mechanics import evaluate
 
@@ -64,6 +64,7 @@ class TestMechanics(unittest.TestCase):
         ev = evaluate(perfect_clock(), self.config)
         self.assertTrue(ev.valid, ev.reason)
         self.assertEqual(ev.stage, 4)
+        self.assertTrue(ev.accurate)
         self.assertEqual(len(ev.ratios), 2)
         self.assertAlmostEqual(ev.ratios[0], 60.0, places=6)   # seconds : minutes
         self.assertAlmostEqual(ev.ratios[1], 12.0, places=6)   # minutes : hours
@@ -96,12 +97,16 @@ class TestMechanics(unittest.TestCase):
         dna.hands = []
         self.assertEqual(evaluate(dna, self.config).stage, 1)
 
-    def test_wrong_ratio_is_stage_3(self):
+    def test_wrong_ratio_is_stage_4_but_inaccurate(self):
+        # Three hands still turn, so it reaches the top *structural* stage (4),
+        # but the ratios are off, so it is not a working clock. Accuracy is a
+        # continuous reward, not a stage gate.
         dna = perfect_clock()
         dna.cogs[1].inner_teeth = 40  # 60:1 becomes 45:1
         ev = evaluate(dna, self.config)
         self.assertTrue(ev.valid)
-        self.assertEqual(ev.stage, 3)
+        self.assertEqual(ev.stage, 4)
+        self.assertFalse(ev.accurate)
 
     def test_inconsistent_cycle_is_deadlock(self):
         dna = ClockDNA(
@@ -169,15 +174,15 @@ class TestFitness(unittest.TestCase):
 
     def test_stage_dominance(self):
         scores = []
-        dna = perfect_clock()           # stage 4
+        dna = perfect_clock()           # stage 4, accurate
         scores.append(self._score(dna)[0])
-        dna = perfect_clock()           # stage 3 (wrong ratio)
+        dna = perfect_clock()           # stage 4, wrong ratio (accuracy lower)
         dna.cogs[1].inner_teeth = 40
         scores.append(self._score(dna)[0])
-        dna = perfect_clock()           # stage 2
+        dna = perfect_clock()           # stage 2 (one rotating hand)
         dna.hands = dna.hands[:1]
         scores.append(self._score(dna)[0])
-        dna = perfect_clock()           # stage 1
+        dna = perfect_clock()           # stage 1 (escapement only)
         dna.hands = []
         scores.append(self._score(dna)[0])
         dna = perfect_clock()           # stage 0 (no spring power)
@@ -196,12 +201,47 @@ class TestFitness(unittest.TestCase):
         self.assertLess(bad_score, 100)
         self.assertGreaterEqual(empty_score, 100)
 
-    def test_accuracy_gradient_within_stage_3(self):
+    def test_accuracy_gradient(self):
+        # Closer ratios always score higher (continuous, within the top stage).
         near = perfect_clock()
         near.cogs[1].inner_teeth = 29   # ratio 58:1
         far = perfect_clock()
         far.cogs[1].inner_teeth = 15    # ratio 30:1
         self.assertGreater(self._score(near)[0], self._score(far)[0])
+
+    def test_accuracy_has_no_cliff_at_tolerance(self):
+        # Crossing ratio_tolerance must not create a stage jump: a barely
+        # inaccurate three-handed clock shares stage 4 with the perfect one, so
+        # the score gap is only the continuous accuracy term, well under a stage.
+        good_s, good_ev = self._score(perfect_clock())
+        off = perfect_clock()
+        off.cogs[1].inner_teeth = 31     # ~3% off 60 -> not within tolerance
+        off_s, off_ev = self._score(off)
+        self.assertEqual(good_ev.stage, off_ev.stage)   # both stage 4
+        self.assertFalse(off_ev.accurate)               # but not a working clock
+        self.assertGreater(good_s, off_s)               # closer still wins
+        self.assertLess(good_s - off_s, STAGE_WEIGHT)   # no cliff at the tolerance
+
+    def test_material_prunes_redundant_cog(self):
+        # An identical clock carrying an extra unpowered cog is heavier and so
+        # scores lower - the gradient that pressures evolution to delete dead cogs.
+        base = perfect_clock()
+        heavy = perfect_clock()
+        heavy.cogs.append(Cog("spare", outer_teeth=120, inner_teeth=8))  # unpowered
+        base_s, base_ev = self._score(base)
+        heavy_s, heavy_ev = self._score(heavy)
+        self.assertTrue(base_ev.accurate and heavy_ev.accurate)  # the cog changes nothing functional
+        self.assertEqual(base_ev.stage, heavy_ev.stage)
+        self.assertGreater(base_s, heavy_s)                      # but the extra mass costs
+
+    def test_material_weight_zero_disables_penalty(self):
+        cfg = Config(material_weight=0.0)
+        base = perfect_clock()
+        heavy = perfect_clock()
+        heavy.cogs.append(Cog("spare", outer_teeth=120, inner_teeth=8))
+        s_base = score(base, evaluate(base, cfg), cfg)
+        s_heavy = score(heavy, evaluate(heavy, cfg), cfg)
+        self.assertAlmostEqual(s_base, s_heavy)  # no material term -> identical
 
 
 class TestGenesis(unittest.TestCase):

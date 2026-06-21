@@ -8,7 +8,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from .config import Config
 from .dna import ClockDNA
-from .fitness import score
+from .fitness import score, clock_mass
 from .genesis import mutate, random_clock
 from .mechanics import Evaluation, evaluate
 
@@ -67,6 +67,8 @@ def population_snapshot(generation: int, pop: List[Individual]) -> Dict:
         "hand_counts": hand_counts,
         "mean_pair_error": (sum(pair_errors) / len(pair_errors)) if pair_errors else None,
         "clocks_with_ratios": len(pair_errors),
+        "mean_mass": sum(clock_mass(ind.dna) for ind in pop) / len(pop),
+        "best_mass": clock_mass(best.dna),
     }
 
 
@@ -103,13 +105,15 @@ class EvolutionEngine:
             "score": self.best_eval.score,
             "stage": self.best_eval.stage,
             "rotating_hands": self.best_eval.rotating_hand_count(),
+            "accurate": self.best_eval.accurate,
             "ratios": list(self.best_eval.ratios),
             "dna": self.best_dna.to_dict(),
         }
 
     @property
     def success(self) -> bool:
-        return self.best_eval.stage == 4
+        # A "working clock": three hands turning at the target ratios within tolerance.
+        return self.best_eval.accurate
 
     def run(
         self,

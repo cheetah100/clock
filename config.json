@@ -13,9 +13,10 @@
   "selection_method": "tournament",
   "tournament_size": 4,
 
-  "generations_per_run": 200000,
+  "generations_per_run": 50000,
   "visualization_frequency": 100,
   "ratio_tolerance": 0.01,
+  "material_weight": 100.0,
   "stop_on_success": true,
   "random_seed": null
 }

@@ -30,7 +30,7 @@ forwarded automatically). The UI has:
   `config.json`; change anything and press **Run** to start a fresh
   simulation. **Stop** cancels a run early.
 - **Live status and charts** (centre) — generation counter, best score/stage,
-  current best ratios, and the three progress graphs updating as the run
+  current best ratios, and the four progress graphs updating as the run
   proceeds.
 - **Best-clock timeline** (bottom) — a scrollable filmstrip with a small
   schematic of every new best clock as it was discovered, captioned with its
@@ -81,6 +81,7 @@ success (a stage-4 clock evolved), 1 otherwise. Output files:
 | `hands_over_time.png` | Stacked area chart: clocks with 0/1/2/3 rotating hands |
 | `accuracy_over_time.png` | Mean ratio error of 2+-hand clocks (log scale) |
 | `fitness_over_time.png` | Best and mean fitness curves |
+| `mass_over_time.png` | Mean and best-clock material use (sum of outer_teeth²) over generations |
 
 ### `visualize` — render any stored DNA
 
@@ -119,7 +120,8 @@ All keys in [config.json](config.json) (any key may be omitted; defaults shown):
 | `mutation_weights` | see `clocksim/config.py` | Relative probability of each mutation operator |
 | `generations_per_run` | 200000 | Generation limit |
 | `visualization_frequency` | 100 | Record a population snapshot every N generations |
-| `ratio_tolerance` | 0.01 | Relative error allowed on each hand-pair ratio (60 for seconds:minutes, 12 for minutes:hours) for stage 4 |
+| `ratio_tolerance` | 0.01 | Relative error on each hand-pair ratio (60 for seconds:minutes, 12 for minutes:hours) for a clock to count as *working* (success label only — not a fitness threshold) |
+| `material_weight` | 100.0 | Reward for a lighter clock; mass is the sum of `outer_teeth²` over all cogs, so redundant cogs are pure cost. ~100 is a sweet spot (prunes the train from ~12 cogs to ~5 *and* speeds convergence); higher still works but tends to slow the ratio hunt |
 | `stop_on_success` | true | Stop as soon as a stage-4 clock exists |
 | `random_seed` | null | Fix for reproducible runs |
 
@@ -163,18 +165,31 @@ by a mutated copy of the winner):
 ### Fitness
 
 Hierarchical stages dominate: `score = 100 + 2000 × stage + bonus`, with the
-bonus capped below 2000 so a higher stage always wins. Stages: 0 non-functional,
-1 swinging pendulum, 2 one rotating hand, 3 two+, 4 all three hands within
-`ratio_tolerance` of their targets (60 then 12). Invalid clocks score below every valid clock (0–30,
-with small credit per escapement connection so they can climb back out).
+bonus capped below 2000 so a higher stage always wins. **Stage is structural
+capability only** — `1 (escapement) + number of rotating hands` — so 0
+non-functional, 1 swinging pendulum, 2 one rotating hand, 3 two, 4 all three
+hands turning *regardless of accuracy*. Invalid clocks score below every valid
+clock (0–30, with small credit per escapement connection so they can climb back
+out).
 
-The within-stage bonus rewards powered cogs, hands present, a wired ratchet
-output, each *rotating* hand, and per-pair ratio accuracy `exp(-|ln(ratio/target)|)`
-(target 60 for seconds:minutes, 12 for minutes:hours).
-Accuracy is **summed per pair rather than averaged** — this matters: with an
-average, a perfect two-handed clock is a local optimum that a third hand can
-only make worse, and evolution stalls there permanently (observed empirically
-before the fix).
+Crucially, **how close the ratios are is a continuous reward, never a stage
+threshold**. The within-stage bonus rewards powered cogs, hands present, a wired
+ratchet output, plus two smooth terms:
+
+- **Accuracy** — `600 × Σ pair_closeness`, where `pair_closeness = 1/(1+|ln(ratio/target)|)`
+  (target 60 for seconds:minutes, 12 for minutes:hours). Unlike a saturating
+  `exp(−error)`, this keeps pulling at any distance, so there is no flat far-field
+  and no cliff at the tolerance. It is **summed per pair rather than averaged** so
+  attaching a third hand never erases the accuracy already earned by the first
+  pair (averaging makes a perfect two-handed clock a local optimum a third hand
+  can only worsen — observed empirically).
+- **Material** — `material_weight × lightness`, where mass is `Σ outer_teeth²`
+  over *all* cogs (each modelled as a solid metal disk). A redundant unpowered
+  cog is pure dead weight, so evolution is pressured to prune it; it is a genuine
+  secondary objective that trades against accuracy *within* a stage.
+
+`ratio_tolerance` no longer gates fitness — it only labels a clock as *working*
+(three hands within tolerance) for the success/stop criterion and reporting.
 
 ### Mutations
 
@@ -202,7 +217,7 @@ The scripts run a parameter-sensitivity study and its write-up,
 [docs/PAPER.md](docs/PAPER.md); generated artifacts land in `experiments/`:
 
 ```bash
-python3 -m clocksim.run_experiments   # ~8 min on 16 cores: 176 evolution runs
+python3 -m clocksim.run_experiments   # ~7 min on 16 cores: 240 evolution runs
 python3 -m clocksim.analyze           # summary stats, figures, example clocks
 ```
 
