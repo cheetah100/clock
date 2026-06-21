@@ -24,6 +24,7 @@ from urllib.parse import parse_qs, urlparse
 from .config import Config
 from .dna import ClockDNA
 from .evolution import EvolutionEngine
+from .render import render_model
 from .visualization import CHART_NAMES, clock_figure, figure_png_bytes, history_figure
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -38,7 +39,7 @@ FORM_FIELDS = [
     "min_inner_outer_gap", "max_cogs", "max_meshes_per_cog",
     "population_size", "mutation_rate", "selection_method", "tournament_size",
     "generations_per_run", "visualization_frequency", "ratio_tolerance",
-    "material_weight", "stop_on_success", "random_seed",
+    "material_weight", "direction_weight", "stop_on_success", "random_seed",
 ]
 
 
@@ -136,6 +137,13 @@ class AppState:
         with RENDER_LOCK:
             return figure_png_bytes(history_figure(name, history))
 
+    def clock_model(self, index: int) -> dict:
+        if self.engine is None:
+            raise KeyError("no run yet")
+        entry = self.engine.improvements[index]
+        dna = ClockDNA.from_dict(entry["dna"])
+        return render_model(dna, self.engine.config)
+
     def clock_png(self, index: int, size: str) -> bytes:
         if self.engine is None:
             raise KeyError("no run yet")
@@ -199,6 +207,9 @@ class Handler(BaseHTTPRequestHandler):
                 index = int(path[len("/api/clock/"):-len(".png")])
                 size = (query.get("size") or ["small"])[0]
                 self._send(200, "image/png", self.state.clock_png(index, size))
+            elif path.startswith("/api/clock/") and path.endswith("/model.json"):
+                index = int(path[len("/api/clock/"):-len("/model.json")])
+                self._json(self.state.clock_model(index))
             elif path.startswith("/api/clock/") and path.endswith(".json"):
                 index = int(path[len("/api/clock/"):-len(".json")])
                 entry = self.state.engine.improvements[index]

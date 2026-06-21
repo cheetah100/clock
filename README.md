@@ -122,6 +122,7 @@ All keys in [config.json](config.json) (any key may be omitted; defaults shown):
 | `visualization_frequency` | 100 | Record a population snapshot every N generations |
 | `ratio_tolerance` | 0.01 | Relative error on each hand-pair ratio (60 for seconds:minutes, 12 for minutes:hours) for a clock to count as *working* (success label only — not a fitness threshold) |
 | `material_weight` | 100.0 | Reward for a lighter clock; mass is the sum of `outer_teeth²` over all cogs, so redundant cogs are pure cost. ~100 is a sweet spot (prunes the train from ~12 cogs to ~5 *and* speeds convergence); higher still works but tends to slow the ratio hunt |
+| `direction_weight` | 50.0 | Reward per hand turning the same way as the fastest hand. Each mesh reverses direction, so hands can counter-rotate; this prices that in (without forbidding it) to favour all-clockwise faces |
 | `stop_on_success` | true | Stop as soon as a stage-4 clock exists |
 | `random_seed` | null | Fix for reproducible runs |
 
@@ -187,9 +188,16 @@ ratchet output, plus two smooth terms:
   over *all* cogs (each modelled as a solid metal disk). A redundant unpowered
   cog is pure dead weight, so evolution is pressured to prune it; it is a genuine
   secondary objective that trades against accuracy *within* a stage.
+- **Direction** — `direction_weight × codirectional`, rewarding hands that turn
+  the same way as the fastest one. Because every mesh reverses rotation, hands at
+  different points in the train can counter-rotate (mechanically valid but
+  un-clocklike); this prices that in without forbidding it, nudging evolution
+  toward all-clockwise faces. A real build would instead add idler gears.
 
-`ratio_tolerance` no longer gates fitness — it only labels a clock as *working*
-(three hands within tolerance) for the success/stop criterion and reporting.
+The whole within-stage bonus is clamped below the 2000 stage step, so more
+correctly turning hands always win. `ratio_tolerance` no longer gates fitness —
+it only labels a clock as *working* (three hands within tolerance) for the
+success/stop criterion and reporting.
 
 ### Mutations
 

@@ -17,11 +17,15 @@ a smooth surface with no cliffs:
     the accuracy already earned by the first pair;
   * a material reward `material_weight * lightness` that favours lighter clocks,
     where mass is the sum of outer_teeth^2 over *all* cogs - so a redundant
-    unpowered cog is pure dead weight and evolution is pressured to prune it.
+    unpowered cog is pure dead weight and evolution is pressured to prune it;
+  * a direction reward `direction_weight * codirectional` that favours hands all
+    turning the same way as the fastest one. A counter-rotating hand is mechanically
+    valid (each mesh reverses direction) but un-clocklike; this prices it in
+    without forbidding it, so evolution drifts toward all-clockwise faces.
 
-The accuracy and material bands are kept below the 2000 stage step, so a clock
-with more correctly turning hands always outranks one with fewer, and material
-only trades against accuracy *within* a stage (a deliberate secondary objective).
+The whole within-stage bonus is clamped below the 2000 stage step, so a clock
+with more correctly turning hands always outranks one with fewer; the accuracy,
+material and direction terms only trade against each other *within* a stage.
 """
 
 from .config import Config
@@ -60,11 +64,13 @@ def material_lightness(dna: ClockDNA, config: Config) -> float:
 def score(dna: ClockDNA, ev: Evaluation, config: Config) -> float:
     if not ev.valid:
         return 10.0 * escapement_links(dna)
-    value = VALID_BASE + STAGE_WEIGHT * ev.stage
-    value += 20.0 * min(len(ev.omegas), 5)            # powered cogs in the train
-    value += 30.0 * min(len(dna.hands), 3)            # hands present (even idle)
+    bonus = 20.0 * min(len(ev.omegas), 5)             # powered cogs in the train
+    bonus += 30.0 * min(len(dna.hands), 3)            # hands present (even idle)
     if dna.drive_cog is not None:
-        value += 50.0
-    value += ACCURACY_WEIGHT * sum(ev.pair_closeness)  # continuous closeness to targets
-    value += config.material_weight * material_lightness(dna, config)
-    return value
+        bonus += 50.0
+    bonus += ACCURACY_WEIGHT * sum(ev.pair_closeness)  # continuous closeness to targets
+    bonus += config.material_weight * material_lightness(dna, config)
+    bonus += config.direction_weight * ev.codirectional  # hands turning the same way
+    # Clamp the within-stage bonus below one stage step so a higher stage (more
+    # rotating hands) always wins, whatever the configured weights.
+    return VALID_BASE + STAGE_WEIGHT * ev.stage + min(bonus, STAGE_WEIGHT - 1.0)

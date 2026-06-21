@@ -30,6 +30,7 @@ BASELINE = {
     "max_cogs": 12,
     "max_meshes_per_cog": 2,
     "material_weight": 100.0,
+    "direction_weight": 50.0,
     "population_size": 100,
     "mutation_rate": 0.35,
     "selection_method": "tournament",
@@ -46,6 +47,7 @@ SWEEPS = {
     "max_cogs": [(v, {"max_cogs": v}) for v in (5, 6, 8, 16)],
     "max_meshes_per_cog": [(v, {"max_meshes_per_cog": v}) for v in (3, 4, 6, 8)],
     "material_weight": [(v, {"material_weight": v}) for v in (0.0, 50.0, 200.0, 400.0)],
+    "direction_weight": [(v, {"direction_weight": v}) for v in (0.0, 25.0, 100.0, 200.0)],
     "population_size": [(v, {"population_size": v}) for v in (10, 25, 50, 250)],
     "mutation_rate": [(v, {"mutation_rate": v}) for v in (0.0, 0.2, 0.6, 0.9)],
     "selection": [
@@ -63,6 +65,7 @@ BASELINE_LABELS = {
     "max_cogs": 12,
     "max_meshes_per_cog": 2,
     "material_weight": 100.0,
+    "direction_weight": 50.0,
     "population_size": 100,
     "mutation_rate": 0.35,
     "selection": "tournament-4",
@@ -112,6 +115,7 @@ def run_task(task):
         "best_cogs": len(engine.best_dna.cogs),
         "best_powered_cogs": len(engine.best_eval.omegas),
         "best_total_mass": total_mass,
+        "best_codirectional": engine.best_eval.codirectional,
         "improvement_count": len(engine.improvements),
         "best_dna": engine.best_dna.to_dict(),
     }

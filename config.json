@@ -17,6 +17,7 @@
   "visualization_frequency": 100,
   "ratio_tolerance": 0.01,
   "material_weight": 100.0,
+  "direction_weight": 50.0,
   "stop_on_success": true,
   "random_seed": null
 }

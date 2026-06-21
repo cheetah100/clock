@@ -234,6 +234,28 @@ class TestFitness(unittest.TestCase):
         self.assertEqual(base_ev.stage, heavy_ev.stage)
         self.assertGreater(base_s, heavy_s)                      # but the extra mass costs
 
+    def test_direction_reward_for_corotation(self):
+        # The hand-built clock has all three hands turning the same way.
+        ev = evaluate(perfect_clock(), self.config)
+        self.assertEqual(ev.rotating_hand_count(), 3)
+        self.assertEqual(ev.codirectional, 3)
+        dna = perfect_clock()
+        ev_eval = evaluate(dna, self.config)
+        c_off = Config(direction_weight=0.0)
+        c_on = Config(direction_weight=100.0)
+        gain = score(dna, ev_eval, c_on) - score(dna, ev_eval, c_off)
+        self.assertAlmostEqual(gain, 100.0 * ev_eval.codirectional)  # term is wired in
+
+    def test_counter_rotating_hand_lowers_codirectional(self):
+        # c1/c3/c5 turn one way; c2/c4 the other. Moving a hand to c2 makes it
+        # counter-rotate, so fewer hands share the fastest hand's direction.
+        dna = perfect_clock()
+        dna.hands[2].cog_id = "c2"
+        dna.hands[2].surface = OUTER
+        ev = evaluate(dna, self.config)
+        self.assertEqual(ev.rotating_hand_count(), 3)
+        self.assertEqual(ev.codirectional, 2)
+
     def test_material_weight_zero_disables_penalty(self):
         cfg = Config(material_weight=0.0)
         base = perfect_clock()
@@ -339,10 +361,18 @@ class TestWebApp(unittest.TestCase):
         self.assertIsNone(status["error"])
         self.assertGreaterEqual(len(status["improvements"]), 1)
         # All renderable artifacts produce PNG bytes.
-        for chart in ("hands", "accuracy", "fitness"):
+        for chart in ("hands", "accuracy", "fitness", "mass"):
             self.assertTrue(state.chart_png(chart).startswith(b"\x89PNG"))
         self.assertTrue(state.clock_png(0, "small").startswith(b"\x89PNG"))
         self.assertTrue(state.clock_png(0, "full").startswith(b"\x89PNG"))
+        # The animation render model carries geometry + kinematics, JSON-clean.
+        model = state.clock_model(0)
+        self.assertEqual(json.loads(json.dumps(model)), model)
+        for key in ("cogs", "hands", "ratchet", "pendulum", "bounds"):
+            self.assertIn(key, model)
+        for cog in model["cogs"]:
+            self.assertIn("omega", cog)
+            self.assertIn("outer_teeth", cog)
 
     def test_rejects_bad_config_and_double_start(self):
         from clocksim.webapp import AppState, build_config

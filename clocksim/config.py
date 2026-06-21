@@ -49,6 +49,7 @@ class Config:
     visualization_frequency: int = 100  # snapshot population stats every N generations
     ratio_tolerance: float = 0.01       # relative error to count as a *working* clock (success label only)
     material_weight: float = 100.0      # reward for a lighter clock (mass = sum of outer_teeth^2 over all cogs)
+    direction_weight: float = 50.0      # reward per hand turning the same way as the fastest (co-rotation)
     stop_on_success: bool = True
     random_seed: Optional[int] = None
 
@@ -80,5 +81,7 @@ class Config:
             raise ValueError("max_meshes_per_cog must be at least 1")
         if self.material_weight < 0:
             raise ValueError("material_weight must be non-negative")
+        if self.direction_weight < 0:
+            raise ValueError("direction_weight must be non-negative")
         if self.selection_method not in ("tournament", "random", "best"):
             raise ValueError("selection_method must be tournament, random or best")

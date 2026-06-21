@@ -32,6 +32,7 @@ SWEEP_ORDERS = {
     "max_cogs": [5, 6, 8, 12, 16],
     "max_meshes_per_cog": [2, 3, 4, 6, 8],
     "material_weight": [0, 50, 100, 200, 400],
+    "direction_weight": [0, 25, 50, 100, 200],
     "population_size": [10, 25, 50, 100, 250],
     "mutation_rate": [0.0, 0.2, 0.35, 0.6, 0.9],
     "selection": ["random", "best", "tournament-2", "tournament-4",
@@ -42,6 +43,7 @@ SWEEP_TITLES = {
     "max_cogs": "Maximum cogs per clock",
     "max_meshes_per_cog": "Maximum meshes per cog",
     "material_weight": "Material weight (parsimony pressure)",
+    "direction_weight": "Direction weight (co-rotation pressure)",
     "population_size": "Population size",
     "mutation_rate": "Mutation rate (extra-mutation probability)",
     "selection": "Selection method",
@@ -86,6 +88,8 @@ def aggregate(group):
             statistics.mean(r["best_powered_cogs"] for r in group), 1),
         "mean_total_mass": round(
             statistics.mean(r.get("best_total_mass", 0) for r in group)),
+        "mean_codirectional": round(
+            statistics.mean(r.get("best_codirectional", 0) for r in group), 2),
     }
 
 
@@ -166,7 +170,8 @@ def main():
     summary = {}
     csv_lines = ["sweep,value,runs,successes,success_rate,median_gen_success,"
                  "min_gen_success,max_gen_success,median_final_error_pct,"
-                 "mean_elapsed_s,mean_best_cogs,mean_powered_cogs,mean_total_mass"]
+                 "mean_elapsed_s,mean_best_cogs,mean_powered_cogs,mean_total_mass,"
+                 "mean_codirectional"]
     examples = {}
 
     overrides_by_sweep_value = {
@@ -185,7 +190,7 @@ def main():
             agg = aggregate(group)
             summary[sweep][str(value)] = agg
             csv_lines.append(
-                "%s,%s,%d,%d,%.3f,%s,%s,%s,%s,%.1f,%.1f,%.1f,%d" % (
+                "%s,%s,%d,%d,%.3f,%s,%s,%s,%s,%.1f,%.1f,%.1f,%d,%.2f" % (
                     sweep, value, agg["runs"], agg["successes"], agg["success_rate"],
                     agg["median_gen_success"], agg["min_gen_success"],
                     agg["max_gen_success"],
@@ -193,6 +198,7 @@ def main():
                     if agg["median_final_error_pct"] is not None else "",
                     agg["mean_elapsed_s"], agg["mean_best_cogs"],
                     agg["mean_powered_cogs"], agg["mean_total_mass"],
+                    agg["mean_codirectional"],
                 )
             )
         plot_sweep(sweep, groups, order, os.path.join(FIG_DIR, sweep + ".png"))

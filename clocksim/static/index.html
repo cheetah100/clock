@@ -94,9 +94,15 @@
   #modalBox { background: white; border-radius: 8px; padding: 14px;
               max-width: 88vw; max-height: 92vh; overflow: auto; }
   #modalBox img { max-width: 82vw; max-height: 74vh; display: block; }
+  #clockCanvas { max-width: 82vw; max-height: 74vh; display: block;
+                 background: #fbfbfd; border-radius: 6px; }
   #modalMeta { display: flex; justify-content: space-between; align-items: center;
                font-size: 13px; margin-top: 6px; gap: 14px; }
   #modalMeta a { color: var(--accent); }
+  #modalCtl { display: flex; align-items: center; gap: 14px; }
+  #speedCtl { display: flex; align-items: center; gap: 6px; color: #555; }
+  #clockToggle { cursor: pointer; font-size: 12px; padding: 3px 10px;
+                 border: 1px solid var(--line); border-radius: 5px; background: #fff; }
 </style>
 </head>
 <body>
@@ -141,10 +147,15 @@
 </main>
 <div id="modal">
   <div id="modalBox">
-    <img id="modalImg" alt="clock schematic">
+    <canvas id="clockCanvas" width="900" height="640"></canvas>
+    <img id="modalImg" alt="clock schematic" hidden>
     <div id="modalMeta">
       <span id="modalCap"></span>
-      <a id="modalDna" href="#">Download DNA</a>
+      <span id="modalCtl">
+        <label id="speedCtl">Speed <b id="speedVal">1× (real time)</b> <input id="clockSpeed" type="range" min="1" max="600" value="1"></label>
+        <button id="clockToggle">Schematic</button>
+        <a id="modalDna" href="#">Download DNA</a>
+      </span>
     </div>
   </div>
 </div>
@@ -159,7 +170,7 @@ const GROUPS = [
                         "max_meshes_per_cog"]],
   ["Evolution", ["population_size", "mutation_rate", "selection_method", "tournament_size"]],
   ["Simulation", ["generations_per_run", "visualization_frequency", "ratio_tolerance",
-                  "material_weight", "stop_on_success", "random_seed"]],
+                  "material_weight", "direction_weight", "stop_on_success", "random_seed"]],
 ];
 const LABELS = {
   min_cog_teeth: "Min cog teeth", max_cog_teeth: "Max cog teeth",
@@ -170,10 +181,10 @@ const LABELS = {
   selection_method: "Selection method", tournament_size: "Tournament size",
   generations_per_run: "Generation limit", visualization_frequency: "Snapshot every N gen",
   ratio_tolerance: "Ratio tolerance", material_weight: "Material weight",
-  stop_on_success: "Stop on success",
+  direction_weight: "Direction weight", stop_on_success: "Stop on success",
   random_seed: "Random seed (blank = random)",
 };
-const FLOATS = new Set(["mutation_rate", "ratio_tolerance", "material_weight"]);
+const FLOATS = new Set(["mutation_rate", "ratio_tolerance", "material_weight", "direction_weight"]);
 
 let defaults = {};
 let runId = 0, lastSnapshots = -1, thumbsShown = 0, pollTimer = null;
@@ -272,16 +283,161 @@ function updateTimeline(st) {
   }
 }
 
-function openModal(imp, run) {
-  $("modalImg").src = `/api/clock/${imp.index}.png?size=full&run=${run}`;
+// ---- Animated clock renderer --------------------------------------------
+const anim = { raf: 0, model: null, run: 0, index: 0 };
+const HAND_COLORS = { Seconds: "#c0392b", Minutes: "#2c6fad", Hours: "#27773f" };
+
+function stopAnim() { if (anim.raf) cancelAnimationFrame(anim.raf); anim.raf = 0; }
+
+function gearPath(ctx, r, teeth, toothH) {
+  // a castellated (square-tooth) gear outline centred at the origin
+  const N = Math.max(3, teeth);
+  for (let k = 0; k < N; k++) {
+    const a0 = (k / N) * 2 * Math.PI, a1 = ((k + 0.3) / N) * 2 * Math.PI;
+    const a2 = ((k + 0.7) / N) * 2 * Math.PI, a3 = ((k + 1) / N) * 2 * Math.PI;
+    const rt = r + toothH;
+    if (k === 0) ctx.moveTo(r * Math.cos(a0), r * Math.sin(a0));
+    ctx.lineTo(r * Math.cos(a0), r * Math.sin(a0));
+    ctx.lineTo(rt * Math.cos(a1), rt * Math.sin(a1));
+    ctx.lineTo(rt * Math.cos(a2), rt * Math.sin(a2));
+    ctx.lineTo(r * Math.cos(a3), r * Math.sin(a3));
+  }
+  ctx.closePath();
+}
+
+function drawScene(ctx, model, tf, t, vscale) {
+  const { X, Y, s } = tf;
+  // mesh connections (faint)
+  ctx.strokeStyle = "#d0d6dc"; ctx.lineWidth = 1;
+  const byId = {}; model.cogs.forEach(c => byId[c.id] = c);
+  model.meshes.forEach(m => {
+    const a = byId[m.a], b = byId[m.b];
+    if (a && b) { ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(b.x), Y(b.y)); ctx.stroke(); }
+  });
+
+  // spring + pendulum (world-space, so they scale and stay inside the view)
+  const rt = model.ratchet, rrx = X(rt.x), rry = Y(rt.y), rr = rt.radius * s;
+  const sp = model.spring;
+  ctx.strokeStyle = sp.connected ? "#27ae60" : "#c4c4c4"; ctx.lineWidth = 1.5;
+  ctx.strokeRect(X(sp.x - sp.hw), Y(sp.y + sp.hh), 2 * sp.hw * s, 2 * sp.hh * s);
+  if (sp.connected) { ctx.beginPath(); ctx.moveTo(X(sp.x + sp.hw), Y(sp.y)); ctx.lineTo(rrx, rry); ctx.stroke(); }
+  const pd = model.pendulum, pivx = X(pd.pivot_x), pivy = Y(pd.pivot_y), Lpx = pd.len * s;
+  const swing = pd.connected ? 0.4 * Math.sin(2 * Math.PI * 0.8 * t) : 0;
+  const bx = pivx + Lpx * Math.sin(swing), by = pivy + Lpx * Math.cos(swing);
+  ctx.strokeStyle = pd.connected ? "#e67e22" : "#c4c4c4"; ctx.lineWidth = 2;
+  if (pd.connected) { ctx.beginPath(); ctx.moveTo(pivx, pivy); ctx.lineTo(rrx, rry); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(pivx, pivy); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.fillStyle = pd.connected ? "#e67e22" : "#c4c4c4";
+  ctx.beginPath(); ctx.arc(bx, by, Math.max(3, pd.bob * s), 0, 2 * Math.PI); ctx.fill();
+
+  // ratchet wheel
+  ctx.save(); ctx.translate(rrx, rry); ctx.rotate(rt.omega * vscale * 2 * Math.PI * t);
+  ctx.strokeStyle = "#8e44ad"; ctx.fillStyle = "rgba(142,68,173,0.12)"; ctx.lineWidth = 1.6;
+  ctx.beginPath(); gearPath(ctx, rr, rt.teeth, Math.max(2, 0.5 * s)); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(rr, 0); ctx.stroke();
+  ctx.restore();
+
+  // cogs
+  for (const c of model.cogs) {
+    const cx = X(c.x), cy = Y(c.y), rOut = c.r_out * s, rIn = c.r_in * s;
+    const tooth = Math.max(2, 0.5 * s);
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(c.omega * vscale * 2 * Math.PI * t);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = c.is_drive ? "#8e44ad" : (c.powered ? "#34495e" : "#aeb6bd");
+    ctx.fillStyle = c.powered ? "rgba(90,130,170,0.16)" : "rgba(170,180,190,0.10)";
+    ctx.beginPath(); gearPath(ctx, rOut, c.outer_teeth, tooth); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); gearPath(ctx, rIn, c.inner_teeth, tooth * 0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(rOut, 0); ctx.stroke();  // spoke marker
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath(); ctx.arc(0, 0, Math.max(2, rIn * 0.3), 0, 2 * Math.PI); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = c.powered ? "#34495e" : "#9aa3ab";
+    ctx.font = "11px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(c.id, cx, cy - rOut - 5);
+  }
+
+  // hands (rotate with their cog; y is flipped on screen)
+  for (const h of model.hands) {
+    const cx = X(h.x), cy = Y(h.y), L = h.length * s;
+    // screen angle advances at +omega, matching the cog's ctx.rotate(omega...)
+    const ang = (Math.PI / 2 - h.index * Math.PI / 4) + h.omega * vscale * 2 * Math.PI * t;
+    const tx = cx + L * Math.cos(ang), ty = cy + L * Math.sin(ang);
+    ctx.strokeStyle = h.role ? HAND_COLORS[h.role] : "#b3b3b3";
+    ctx.lineWidth = h.role === "Hours" ? 4.5 : h.role === "Minutes" ? 3 : 2;
+    ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.lineCap = "butt";
+    if (h.role) {
+      ctx.fillStyle = ctx.strokeStyle; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(h.role, tx, ty - 6);
+    }
+  }
+}
+
+function startAnim(model) {
+  stopAnim();
+  anim.model = model;
+  const cv = $("clockCanvas"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, pad = 36, b = model.bounds;
+  const ww = Math.max(b.maxx - b.minx, 1), wh = Math.max(b.maxy - b.miny, 1);
+  const s = Math.min((W - 2 * pad) / ww, (H - 2 * pad) / wh);
+  const midx = (b.minx + b.maxx) / 2, midy = (b.miny + b.maxy) / 2;
+  const tf = { s, X: wx => W / 2 + s * (wx - midx), Y: wy => H / 2 - s * (wy - midy) };
+  // Wall-clock lock: pin the second hand to 1 rev / 60 s and scale every cog by
+  // the same factor, so the evolved ratios stay exact. The slider is then a
+  // real-time multiplier (x1 = an actual clock). If no hand turns, fall back to
+  // making the fastest element visible so partial mechanisms still animate.
+  let secOmega = 0;
+  model.hands.forEach(h => { if (h.role === "Seconds") secOmega = Math.abs(h.omega); });
+  let baseScale;
+  if (secOmega > 1e-12) {
+    baseScale = (1 / 60) / secOmega;       // seconds hand -> 1 rev / 60 s at x1
+  } else {
+    let maxw = 1e-9;
+    model.cogs.forEach(c => maxw = Math.max(maxw, Math.abs(c.omega)));
+    maxw = Math.max(maxw, Math.abs(model.ratchet.omega));
+    baseScale = 0.2 / maxw;
+  }
+  const t0 = performance.now();
+  (function frame(now) {
+    const t = (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    drawScene(ctx, model, tf, t, baseScale * (+$("clockSpeed").value));
+    anim.raf = requestAnimationFrame(frame);
+  })(t0);
+}
+
+function showSchematic(show) {
+  $("modalImg").hidden = !show;
+  $("clockCanvas").hidden = show;
+  $("speedCtl").style.visibility = show ? "hidden" : "visible";
+  $("clockToggle").textContent = show ? "Animation" : "Schematic";
+  if (show) { stopAnim(); $("modalImg").src = `/api/clock/${anim.index}.png?size=full&run=${anim.run}`; }
+  else if (anim.model) startAnim(anim.model);
+}
+
+async function openModal(imp, run) {
+  anim.run = run; anim.index = imp.index; anim.model = null;
   $("modalCap").textContent =
     `Generation ${imp.generation} - stage ${imp.stage} - score ${imp.score.toFixed(1)}` +
     (imp.ratios.length ? ` - ratios ${imp.ratios.map(r => r.toFixed(2)).join(" : ")}` : "");
   $("modalDna").href = `/api/clock/${imp.index}.json`;
+  showSchematic(false);
   $("modal").classList.add("open");
+  try {
+    const model = await (await fetch(`/api/clock/${imp.index}/model.json`)).json();
+    if ($("modal").classList.contains("open")) { anim.model = model; if ($("modalImg").hidden) startAnim(model); }
+  } catch (e) { showSchematic(true); }
 }
-$("modal").onclick = e => { if (e.target === $("modal")) $("modal").classList.remove("open"); };
-document.addEventListener("keydown", e => { if (e.key === "Escape") $("modal").classList.remove("open"); });
+
+$("clockSpeed").oninput = () => {
+  const v = $("clockSpeed").value;
+  $("speedVal").textContent = v === "1" ? "1× (real time)" : v + "×";
+};
+function closeModal() { stopAnim(); $("modal").classList.remove("open"); }
+$("clockToggle").onclick = () => showSchematic($("clockCanvas").hidden ? false : true);
+$("modal").onclick = e => { if (e.target === $("modal")) closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
 async function poll() {
   let st;

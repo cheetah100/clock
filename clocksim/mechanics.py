@@ -63,6 +63,7 @@ class Evaluation:
         self.pair_closeness = []      # 1/(1+error) per adjacent pair, continuous 0..1
         self.accuracy = 0.0           # mean pair closeness, 0..1
         self.accurate = False         # all pairs within ratio_tolerance (the "working clock" label)
+        self.codirectional = 0        # rotating hands turning the same way as the fastest one
         self.score = 0.0              # filled in by fitness module
 
     def rotating_hand_count(self) -> int:
@@ -78,6 +79,7 @@ class Evaluation:
             "ratios": self.ratios,
             "accuracy": self.accuracy,
             "accurate": self.accurate,
+            "codirectional": self.codirectional,
         }
 
 
@@ -190,13 +192,16 @@ def _layout(dna: ClockDNA, config: Config, ev: Evaluation) -> None:
 
 
 def _stage_and_accuracy(dna: ClockDNA, config: Config, ev: Evaluation) -> None:
-    speeds = []
+    signed = []
     for hand in dna.hands:
         omega = ev.omegas.get(hand.cog_id)
         if omega:
-            speeds.append((hand.id, abs(omega)))
-    speeds.sort(key=lambda item: -item[1])
-    ev.hand_speeds = speeds
+            signed.append((hand.id, omega))
+    signed.sort(key=lambda item: -abs(item[1]))
+    ev.hand_speeds = [(hid, abs(omega)) for hid, omega in signed]
+    if signed:
+        fastest_positive = signed[0][1] > 0
+        ev.codirectional = sum(1 for _, omega in signed if (omega > 0) == fastest_positive)
 
     if not ev.escapement:
         ev.stage = 0
@@ -204,6 +209,7 @@ def _stage_and_accuracy(dna: ClockDNA, config: Config, ev: Evaluation) -> None:
     # Stage is purely structural capability: escapement (1) plus one per rotating
     # hand, so three turning hands is stage 4 regardless of accuracy. How close the
     # ratios are is a *continuous* reward (pair_closeness), never a stage threshold.
+    speeds = ev.hand_speeds
     count = len(speeds)
     ev.stage = 1 + count
     if count >= 2:
